@@ -1,26 +1,47 @@
-from flask_sqlalchemy import SQLAlchemy
+import mysql.connector
 
-db = SQLAlchemy()
+# Establecer la conexión con la base de datos
+# Cambiar los valores por variables de entorno (no tuve tiempo de hacerlo)
+db_connection = mysql.connector.connect(
+    host="localhost:3306",
+    user="root",
+    password="password",
+    database="test"
+)
 
-class Airline(db.Model):
-    id_aerolinea = db.Column(db.Integer, primary_key=True)
-    nombre_aerolinea = db.Column(db.String(50), nullable=False)
+# Crear un cursor para ejecutar consultas
+cursor = db_connection.cursor()
 
-class Airport(db.Model):
-    id_aeropuerto = db.Column(db.Integer, primary_key=True)
-    nombre_aeropuerto = db.Column(db.String(50), nullable=False)
+# Ejemplo de consulta SELECT
+query = "SELECT * FROM airline"
+cursor.execute(query)
+airlines = cursor.fetchall()
 
-class Movement(db.Model):
-    id_movimiento = db.Column(db.Integer, primary_key=True)
-    descripcion = db.Column(db.String(50), nullable=False)
+# Iterar sobre los resultados
+for airline in airlines:
+    print(airline)
 
-class Flight(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    id_aerolinea = db.Column(db.Integer, db.ForeignKey('airline.id_aerolinea'), nullable=False)
-    id_aeropuerto = db.Column(db.Integer, db.ForeignKey('airport.id_aeropuerto'), nullable=False)
-    id_movimiento = db.Column(db.Integer, db.ForeignKey('movement.id_movimiento'), nullable=False)
-    dia = db.Column(db.Date, nullable=False)
+# Ejemplo de consulta INSERT
+insert_query = "INSERT INTO airline (nombre_aerolinea) VALUES ('Jet Airways')"
+cursor.execute(insert_query)
+db_connection.commit()  # Confirmar la inserción
 
-    airline = db.relationship('Airline', backref=db.backref('flights', lazy=True))
-    airport = db.relationship('Airport', backref=db.backref('flights', lazy=True))
-    movement = db.relationship('Movement', backref=db.backref('flights', lazy=True))
+print("Datos insertados correctamente.")
+
+# Ejemplo de consulta UPDATE
+update_query = "UPDATE airline SET nombre_aerolinea = 'Nueva Aerolínea' WHERE id_aerolinea = 1"
+cursor.execute(update_query)
+db_connection.commit()  # Confirmar la actualización
+
+print("Datos actualizados correctamente.")
+
+# Ejemplo de consulta DELETE
+delete_query = "DELETE FROM airline WHERE id_aerolinea = 1"
+cursor.execute(delete_query)
+db_connection.commit()  # Confirmar la eliminación
+
+print("Datos eliminados correctamente.")
+
+# Cerrar el cursor y la conexión
+cursor.close()
+db_connection.close()
