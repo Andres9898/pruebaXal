@@ -1,0 +1,134 @@
+name: Deploy Prueba Tecnica XalDigital
+
+on:
+  push:
+    branches:
+      - develop
+
+env:
+  ENVIRONMENT: develop
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY_MULTICOTIZADOR_ROMA_BACKEND_DEV}} # set this to your Amazon ECR repository name
+  ECS_CLUSTER: ${{vars.ECS_CLUSTER_DEV}}              # set this to your Amazon ECS cluster name
+  ECS_TASK_DEFINITION: ${{vars.ECS_TASK_DEFINITION}} # set this to the path to your Amazon ECS task definition
+  ECS_SERVICE: ${{vars.ECS_SERVICE_ROMA_DEV}} # set this to the path to your Amazon ECS service definition
+  CONTAINER_NAME: ${{vars.CONTAINER_NAME_ROMA_BACKEND}}     # set this to the name of the container in
+  ACCOUNT:  ${{vars.ACCOUNT}}
+
+permissions:
+  actions: write    # This is required for syfle/cancel-workflow-action
+  id-token: write   # This is required for requesting the JWT
+  contents: read    # This is required for actions/checkout
+
+jobs:
+  avoid_redundancy:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Cancel Previous Redundant Builds
+        uses: styfle/cancel-workflow-action@0.4.0
+        with:
+          access_token: ${{ github.token }}
+
+  build-container:
+    runs-on: ubuntu-22.04
+    environment: develop
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+            role-to-assume: arn:aws:iam::${{env.ACCOUNT}}:role/Role_GithubActions
+            aws-region: us-east-1
+
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Configure Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR private
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: $ECR_REPOSITORY
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          ls -al
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY:$IMAGE_TAG
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push  $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  build-frontend:
+    runs-on: ubuntu-22.04
+    environment: develop
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          npm install
+          npm run build
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: build
+
+  deploy-container:
+    needs: [build]
+    runs-on: ubuntu-22.04
+    environment: develop
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{env.ACCOUNT}}:role/Role_GithubActions
+          aws-region: us-east-1
+
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Update ECS task definition
+        id: ecs-update-task-definition
+        run: |
+          aws ecs register-task-definition \
+            --cli-input-json file://infrastructure/task-multicotizador-roma-dev-revision3.json
+
+      - name: Update service
+        id: ecs-deploy-service
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_SERVICE \
+            --task-definition $ECS_TASK_DEFINITION \
+            --desired-count 1 \
+            --force-new-deployment
+
+  deploy-frontend:
+    needs: [build-frontend]
+    runs-on: ubuntu-22.04
+    environment: develop
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{env.ACCOUNT}}:role/Role_GithubActions
+          aws-region: us-east-1
+
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Download production artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: build
+
+      - name: Deploy to S3
+        run: |
+          aws s3 cp build s3://$S3_BUCKET --recursive

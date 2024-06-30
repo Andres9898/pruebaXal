@@ -1,0 +1,33 @@
+# Node modules
+/node_modules
+
+# Next.js build directory
+/.next
+
+# Python virtual environment
+/venv
+
+# Docker related
+.dockerignore
+docker-compose.override.yml
+
+# Editor directories and files
+.idea/
+.vscode/
+*.code-workspace
+
+# Environment variables
+.env
+
+#Database
+mysql_data/
+
+# Flask related files
+/__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# Other generated files
+.DS_Store
