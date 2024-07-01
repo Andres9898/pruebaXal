@@ -20,3 +20,8 @@ localhost:5000
 - /api/highest-reputation
 - /api/lowest-views
 - /api/oldest-newest
+
+- /api/aeropuerto-mas-ocupado
+- /api/aerolinea-mas-activa
+- /api/dia-mas-ocupado
+- /aerolineas-mas-de-dos-vuelos
