@@ -6,9 +6,9 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# Conexión a la base de datos MySQL
+# Conexión a la base de datos MySQL, cambiar por variables de entorno para mayor seguridad
 mydb = mysql.connector.connect(
-    host="172.19.0.2",
+    host="172.18.0.5",
     user="root",
     password="password",
     database="test"

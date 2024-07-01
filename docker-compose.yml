@@ -10,6 +10,9 @@ services:
     environment:
       MYSQL_DATABASE: test
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    networks:
+      custom_network:
+        ipv4_address: 172.18.0.5
     ports:
       - "3306:3306"
     volumes:
@@ -24,6 +27,9 @@ services:
       - "5000:5000"
     env_file:
       - .env
+    networks:
+      custom_network:
+        ipv4_address: 172.18.0.3
     environment:
       - DATABASE_URL=mysql://root:${MYSQL_ROOT_PASSWORD}@db/test
     depends_on:
@@ -35,8 +41,18 @@ services:
     restart: always
     ports:
       - "3000:3000"
+    networks:
+      custom_network:
+        ipv4_address: 172.18.0.4
     depends_on:
       - backend
+
+networks:
+  custom_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/24
 
 volumes:
   mysql_data:
