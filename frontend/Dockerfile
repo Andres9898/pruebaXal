@@ -1,21 +1,25 @@
 # Establecer la imagen base
-FROM python:3.8-slim
+FROM node:20.15-alpine3.19
 
 # Establecer el directorio de trabajo
 WORKDIR /app
 
-# Copiar requirements.txt y el archivo de la aplicación
-COPY requirements.txt requirements.txt
-COPY . .
+# Copiar package.json y el archivo de la aplicación
+COPY package.json /app/
 
 # Instalar las dependencias
-RUN pip install -r requirements.txt
+RUN npm install
+
+COPY . /app/
+
+# Construir la aplicación
+RUN npm run build
 
 # Exponer el puerto de la aplicación
-EXPOSE 5000
+EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5000/ || exit 1
 
 # Comando para iniciar la aplicación
-CMD ["python", "app.py"]
+CMD ["npm", "start"]

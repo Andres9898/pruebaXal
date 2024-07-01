@@ -1,11 +1,5 @@
 # Node modules
-/node_modules
-
-# Next.js build directory
-/.next
-
-# Python virtual environment
-/venv
+frontend/node_modules
 
 # Docker related
 .dockerignore
@@ -31,3 +25,5 @@ mysql_data/
 
 # Other generated files
 .DS_Store
+node_modules
+node_modules

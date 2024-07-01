@@ -1,23 +1,17 @@
 from flask import Flask, jsonify
 import mysql.connector
 import requests
+from flask_cors import CORS
 
 app = Flask(__name__)
-
-# Configuración de la base de datos MySQL
-db_config = {
-    'host': 'localhost:3306',
-    'user': 'root',
-    'password': 'password',
-    'database': 'test'
-}
+CORS(app)
 
 # Conexión a la base de datos MySQL
 mydb = mysql.connector.connect(
-    host=db_config['host'],
-    user=db_config['user'],
-    password=db_config['password'],
-    database=db_config['database']
+    host="172.19.0.2",
+    user="root",
+    password="password",
+    database="test"
 )
 
 # Cursor para ejecutar consultas
@@ -32,78 +26,78 @@ def get_answered_unanswered():
     answered = sum(1 for item in data['items'] if item['is_answered'])
     unanswered = len(data['items']) - answered
 
-    return jsonify({'answered': answered, 'unanswered': unanswered})
+    return jsonify({'respondidas': answered, 'no_respondidas': unanswered})
 
 @app.route('/api/highest-reputation', methods=['GET'])
 def get_highest_reputation():
     response = requests.get('https://api.stackexchange.com/2.2/search?order=desc&sort=activity&intitle=perl&site=stackoverflow')
     data = response.json()
 
-    highest_reputation = max(data['items'], key=lambda item: item['owner']['reputation'])
+    reputacion_mas_alta = max(data['items'], key=lambda item: item['owner']['reputation'])
 
-    return jsonify(highest_reputation)
+    return jsonify(reputacion_mas_alta)
 
 @app.route('/api/lowest-views', methods=['GET'])
 def get_lowest_views():
     response = requests.get('https://api.stackexchange.com/2.2/search?order=desc&sort=activity&intitle=perl&site=stackoverflow')
     data = response.json()
 
-    lowest_views = min(data['items'], key=lambda item: item['view_count'])
+    vistas_mas_bajas = min(data['items'], key=lambda item: item['view_count'])
 
-    return jsonify(lowest_views)
+    return jsonify(vistas_mas_bajas)
 
 @app.route('/api/oldest-newest', methods=['GET'])
 def get_oldest_newest():
     response = requests.get('https://api.stackexchange.com/2.2/search?order=desc&sort=activity&intitle=perl&site=stackoverflow')
     data = response.json()
 
-    oldest = min(data['items'], key=lambda item: item['creation_date'])
-    newest = max(data['items'], key=lambda item: item['creation_date'])
+    mas_antigua = min(data['items'], key=lambda item: item['creation_date'])
+    mas_reciente = max(data['items'], key=lambda item: item['creation_date'])
 
-    return jsonify({'oldest': oldest, 'newest': newest})
+    return jsonify({'mas_antigua': mas_antigua, 'mas_reciente': mas_reciente})
 
 # Consultas SQL para datos de vuelos en México
-@app.route('/api/busiest-airport', methods=['GET'])
-def get_busiest_airport():
-    mycursor.execute("SELECT id_aeropuerto, COUNT(*) as movements FROM Flight GROUP BY id_aeropuerto ORDER BY movements DESC LIMIT 1")
+@app.route('/api/aeropuerto-mas-ocupado', methods=['GET'])
+def get_aeropuerto_mas_ocupado():
+    mycursor.execute("SELECT id_aeropuerto, COUNT(*) as movimientos FROM vuelos GROUP BY id_aeropuerto ORDER BY movimientos DESC LIMIT 1")
     result = mycursor.fetchone()
-    airport_id = result['id_aeropuerto']
-    
-    mycursor.execute("SELECT nombre_aeropuerto FROM Airport WHERE id_aeropuerto = %s", (airport_id,))
-    airport_name = mycursor.fetchone()['nombre_aeropuerto']
+    id_aeropuerto = result['id_aeropuerto']
 
-    return jsonify({'busiest_airport': airport_name, 'movements': result['movements']})
+    mycursor.execute("SELECT nombre_aeropuerto FROM aeropuertos WHERE id_aeropuerto = %s", (id_aeropuerto,))
+    nombre_aeropuerto = mycursor.fetchone()['nombre_aeropuerto']
 
-@app.route('/api/busiest-airline', methods=['GET'])
-def get_busiest_airline():
-    mycursor.execute("SELECT id_aerolinea, COUNT(*) as flights_count FROM Flight GROUP BY id_aerolinea ORDER BY flights_count DESC LIMIT 1")
+    return jsonify({'aeropuerto_mas_ocupado': nombre_aeropuerto, 'movimientos': result['movimientos']})
+
+@app.route('/api/aerolinea-mas-activa', methods=['GET'])
+def get_aerolinea_mas_activa():
+    mycursor.execute("SELECT id_aerolinea, COUNT(*) as cantidad_vuelos FROM vuelos GROUP BY id_aerolinea ORDER BY cantidad_vuelos DESC LIMIT 1")
     result = mycursor.fetchone()
-    airline_id = result['id_aerolinea']
-    
-    mycursor.execute("SELECT nombre_aerolinea FROM Airline WHERE id_aerolinea = %s", (airline_id,))
-    airline_name = mycursor.fetchone()['nombre_aerolinea']
+    id_aerolinea = result['id_aerolinea']
 
-    return jsonify({'busiest_airline': airline_name, 'flights_count': result['flights_count']})
+    mycursor.execute("SELECT nombre_aerolinea FROM aerolineas WHERE id_aerolinea = %s", (id_aerolinea,))
+    nombre_aerolinea = mycursor.fetchone()['nombre_aerolinea']
 
-@app.route('/api/busiest-day', methods=['GET'])
-def get_busiest_day():
-    mycursor.execute("SELECT dia, COUNT(*) as flights_count FROM Flight GROUP BY dia ORDER BY flights_count DESC LIMIT 1")
+    return jsonify({'aerolinea_mas_activa': nombre_aerolinea, 'cantidad_vuelos': result['cantidad_vuelos']})
+
+@app.route('/api/dia-mas-ocupado', methods=['GET'])
+def get_dia_mas_ocupado():
+    mycursor.execute("SELECT dia, COUNT(*) as cantidad_vuelos FROM vuelos GROUP BY dia ORDER BY cantidad_vuelos DESC LIMIT 1")
     result = mycursor.fetchone()
 
-    return jsonify({'busiest_day': result['dia'].isoformat(), 'flights_count': result['flights_count']})
+    return jsonify({'dia_mas_ocupado': result['dia'].isoformat(), 'cantidad_vuelos': result['cantidad_vuelos']})
 
 @app.route('/api/aerolineas-mas-de-dos-vuelos', methods=['GET'])
 def get_aerolineas_mas_de_dos_vuelos():
-    mycursor.execute("SELECT id_aerolinea, COUNT(*) as flights_count FROM Flight GROUP BY id_aerolinea HAVING flights_count > 2")
+    mycursor.execute("SELECT id_aerolinea, COUNT(*) as cantidad_vuelos FROM vuelos GROUP BY id_aerolinea HAVING cantidad_vuelos > 2")
     results = mycursor.fetchall()
-    
-    aerolineas_names = []
-    for result in results:
-        mycursor.execute("SELECT nombre_aerolinea FROM Airline WHERE id_aerolinea = %s", (result['id_aerolinea'],))
-        aerolinea_name = mycursor.fetchone()['nombre_aerolinea']
-        aerolineas_names.append(aerolinea_name)
 
-    return jsonify({'aerolineas': aerolineas_names})
+    nombres_aerolineas = []
+    for result in results:
+        mycursor.execute("SELECT nombre_aerolinea FROM aerolineas WHERE id_aerolinea = %s", (result['id_aerolinea'],))
+        nombre_aerolinea = mycursor.fetchone()['nombre_aerolinea']
+        nombres_aerolineas.append(nombre_aerolinea)
+
+    return jsonify({'aerolineas': nombres_aerolineas})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
